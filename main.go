@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"runtime"
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -28,7 +29,7 @@ type Console struct {
 
 func (c *Console) Login() error {
 	c.client = &http.Client{}
-	url := "http://192.168.218.1?username=admin&password=admin"
+	url := "http://192.168.218.1"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -58,12 +59,25 @@ func (c *Console) BasicSettings() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	data, err := ioutil.ReadAll(rep.Body)
-	rep.Body.Close()
+	doc,err:=goquery.NewDocumentFromReader(rep.Body)
+	defer rep.Body.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("%s", data)
+	doc.Find("table").Each(func(i int,s *goquery.Selection){
+		s.Find("td").Each(func(i1 int,s1 *goquery.Selection){
+			s2,exist:=s1.Find("#ssidname").Attr("value")
+			if exist{
+				c.routerName=s2
+				log.Println("find router name: "+c.routerName)
+			}
+			s2,exist=s1.Find("#ssidpassword").Attr("value")
+			if exist{
+				c.routerPassword=s2
+				log.Println("find router password: "+c.routerPassword)
+			}
+		})
+	})
 	return err
 }
 func ShowWiFiConfig() {
@@ -130,6 +144,7 @@ func socketHandler(conn net.Conn) {
 			}
 		case "accept":
 			fmt.Println("accept with " + rArr[1])
+			ConnectToWiFi(rArr[1],rArr[2])
 		case "refuse":
 			fmt.Println("refused")
 		}
@@ -161,6 +176,7 @@ func main() {
 				log.Print(err)
 				continue
 			}
+			console.BasicSettings()
 			log.Println("log in success")
 			log.Println("rName: "+console.routerName)
 			log.Println("rPassword: "+console.routerPassword)
@@ -178,6 +194,4 @@ func main() {
 			log.Println("not a legal command")
 		}
 	}
-	// ShowWiFiConfig()
-	// console.BasicSettings()
 }

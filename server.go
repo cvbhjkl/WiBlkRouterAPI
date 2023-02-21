@@ -11,7 +11,7 @@ import (
 
 const (
 	NETWORK string = "tcp"
-	LADDR   string = "localhost:8080"
+	LADDR   string = "127.0.0.1:8080"
 )
 
 var mUid2Conn map[uint32]net.Conn = make(map[uint32]net.Conn)
@@ -59,6 +59,7 @@ func connHandle(conn net.Conn, uid uint32) {
 		request := string(buf[:n])
 		log.Println(request)
 		rArr := strings.Split(request, " ")
+		log.Println(rArr)
 		switch rArr[0] {
 		case "register":
 			if len(rArr) < 3 {
@@ -72,13 +73,19 @@ func connHandle(conn net.Conn, uid uint32) {
 			if len(rArr) < 2 {
 				continue
 			}
-			mUid2Conn[mRid2Uid[mRname2Rid[rArr[1]]]].Write([]byte("request" + " " + rArr[1] + " " + strconv.Itoa(int(uid))))
+			rid:=mRname2Rid[rArr[1]]
+			log.Println(rid)
+			uid:=mRid2Uid[rid]
+			log.Println(uid)
+			con:=mUid2Conn[uid]
+			str1:="request" + " " + rArr[1] + " " + strconv.Itoa(int(uid))
+			con.Write([]byte(str1))
 		case "accept":
 			if len(rArr) < 3 {
 				continue
 			}
 			i, _ := strconv.Atoi(rArr[2])
-			mUid2Conn[uint32(i)].Write([]byte("accept" + " " + mRid2Password[mRname2Rid[rArr[1]]]))
+			mUid2Conn[uint32(i)].Write([]byte("accept" + " " +rArr[1]+" "+ mRid2Password[mRname2Rid[rArr[1]]]))
 		case "refuse":
 			if len(rArr) < 3 {
 				continue
