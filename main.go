@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"runtime"
 )
 
 const (
@@ -66,13 +67,46 @@ func (c *Console) BasicSettings() error {
 	return err
 }
 func ShowWiFiConfig() {
-	cmd := exec.Command("netsh", "wlan", "show", "profiles")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("combined out:\n%s\n", string(out))
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+	//fmt.Println(runtime.GOARCH)
+	switch runtime.GOOS {
+	case "windows":
+		cmd := exec.Command("netsh", "wlan", "show", "profiles")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("combined out:\n%s\n", string(out))
+			log.Fatalf("cmd.Run() failed with %s\n", err)
+		}
+		log.Printf("combined out:\n%s\n", string(out))
+	case "darwin":
+		cmd := exec.Command("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-s")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("combined out:\n%s\n", string(out))
+			log.Fatalf("cmd.Run() failed with %s\n", err)
+		}
+		log.Printf("combined out:\n%s\n", string(out))
 	}
-	log.Printf("combined out:\n%s\n", string(out))
+}
+func ConnectToWiFi(rName string,rPassword string) {
+	switch runtime.GOOS {
+	case "windows":
+		//TODO
+		cmd := exec.Command("netsh", "wlan", "show", "profiles")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("combined out:\n%s\n", string(out))
+			log.Fatalf("cmd.Run() failed with %s\n", err)
+		}
+		log.Printf("combined out:\n%s\n", string(out))
+	case "darwin":
+		cmd := exec.Command("networksetup", "-setairportnetwork" ,"en0", rName,rPassword)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("combined out:\n%s\n", string(out))
+			log.Fatalf("cmd.Run() failed with %s\n", err)
+		}
+		log.Printf("combined out:\n%s\n", string(out))
+	}
 }
 func socketHandler(conn net.Conn) {
 	for {
@@ -87,7 +121,7 @@ func socketHandler(conn net.Conn) {
 		switch rArr[0] {
 		case "request":
 			fmt.Println("new request from " + rArr[2] + " asking for " + rArr[1])
-			fmt.Println("please choose accpet or refuse")
+			fmt.Println("please choose accept or refuse")
 			i := <-cAction
 			if i == 1 {
 				conn.Write([]byte("accept" + " " + rArr[1] + " " + rArr[2]))
@@ -108,8 +142,6 @@ var buf []byte = make([]byte, 4096)
 var cAction chan int = make(chan int)
 
 func main() {
-	console.routerName = "router_name"
-	console.routerPassword = "router_password"
 	conn, err := net.DialTimeout(NETWORK, RADDR, 5*time.Second)
 	if err != nil {
 		fmt.Println(err)
@@ -130,6 +162,8 @@ func main() {
 				continue
 			}
 			log.Println("log in success")
+			log.Println("rName: "+console.routerName)
+			log.Println("rPassword: "+console.routerPassword)
 		case "register":
 			conn.Write([]byte("register" + " " + console.routerName + " " + console.routerPassword))
 		case "accept":
